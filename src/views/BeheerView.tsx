@@ -73,6 +73,19 @@ interface BevestigingsSjabloon extends BeheerItem {
   actief: boolean
 }
 
+type ContractType = 'Zorgprestatiemodel' | 'Jeugdhulp' | 'WMO' | 'Overige tarieven'
+
+interface Contract extends BeheerItem {
+  nummer: number
+  type: ContractType
+  administratie: string
+  einddatum: string
+  verzekeraars: string[]
+  budget: number | null
+  actief: boolean
+  gearchiveerd: boolean
+}
+
 // Sidebar sections
 const beheerSections = [
   'Afspraakstatussen',
@@ -98,7 +111,6 @@ const beheerSections = [
 ]
 
 const placeholderSections = new Set([
-  'Contracten',
   'Documentsjablonen',
   'E-mailsjablonen',
   'Huistaken',
@@ -217,6 +229,18 @@ const initialBevestigingsSjablonen: BevestigingsSjabloon[] = [
   { id: '5', naam: 'Intakebevestiging, zónder videobellen', soort: 'Intakebevestiging', onderwerp: 'Bevestiging intake afspraak', inhoud: 'Beste {client_naam},\n\nHierbij bevestigen wij uw intake afspraak op {datum} om {tijd} op locatie {locatie}.\n\nMet vriendelijke groet,\n{praktijk_naam}', verzendMoment: 'Direct na inplannen', actief: true },
 ]
 
+const contractTypes: ContractType[] = ['Zorgprestatiemodel', 'Jeugdhulp', 'WMO', 'Overige tarieven']
+
+const initialContracten: Contract[] = [
+  { id: '1', naam: 'Restitutie facturen', nummer: 30, type: 'Zorgprestatiemodel', administratie: 'Mijn administratie', einddatum: '2026-12-31', verzekeraars: [], budget: null, actief: true, gearchiveerd: false },
+  { id: '2', naam: 'Rechtstreekse facturen', nummer: 31, type: 'Overige tarieven', administratie: 'Mijn administratie', einddatum: '2026-12-31', verzekeraars: [], budget: null, actief: true, gearchiveerd: false },
+  { id: '3', naam: 'Zwolle (0193) Aa en Hunze (1680)', nummer: 32, type: 'Jeugdhulp', administratie: 'Mijn administratie', einddatum: '2026-12-31', verzekeraars: [], budget: null, actief: true, gearchiveerd: false },
+  { id: '4', naam: 'Zwolle (0193)', nummer: 33, type: 'WMO', administratie: 'Mijn administratie', einddatum: '2026-12-31', verzekeraars: [], budget: null, actief: true, gearchiveerd: false },
+  { id: '5', naam: '3311 Zilveren Kruis Zorgverzekeringen N.V. 3313 Interpolis Zorgverzekeringen NV 3351 FBTO Zorgverzekeringen N.V. 3358 De Friesland Zorgverzekeraar N.V. 9086 Pro Life Zorgverzekeringen', nummer: 34, type: 'Zorgprestatiemodel', administratie: 'Mijn administratie', einddatum: '2026-12-31', verzekeraars: ['3311 Zilveren Kruis Zorgverzekeringen N.V.', '3313 Interpolis Zorgverzekeringen NV', '3351 FBTO Zorgverzekeringen N.V.', '3358 De Friesland Zorgverzekeraar N.V.', '9086 Pro Life Zorgverzekeringen'], budget: null, actief: true, gearchiveerd: false },
+  { id: '6', naam: '3343 ONVZ Ziektekostenverzekeraar 3365 ONVZ Expats', nummer: 35, type: 'Zorgprestatiemodel', administratie: 'Mijn administratie', einddatum: '2026-12-31', verzekeraars: ['3343 ONVZ Ziektekostenverzekeraar', '3365 ONVZ Expats'], budget: null, actief: true, gearchiveerd: false },
+  { id: '7', naam: '0101 N.V. Univé Zorg 0699 IZA Zorgverzekeraar NV 0736 NV Zorgverzekeraar UMC 3334 IZA-VNG 3361 ZEKUR 7095 VGZ Zorgverzekeraar N.V.', nummer: 36, type: 'Zorgprestatiemodel', administratie: 'Mijn administratie', einddatum: '2026-12-31', verzekeraars: ['0101 N.V. Univé Zorg', '0699 IZA Zorgverzekeraar NV', '0736 NV Zorgverzekeraar UMC', '3334 IZA-VNG', '3361 ZEKUR', '7095 VGZ Zorgverzekeraar N.V.'], budget: null, actief: true, gearchiveerd: false },
+]
+
 const factureerOpties = [
   'Geweest, wel factureren',
   'No-show, wel factureren',
@@ -241,10 +265,13 @@ export default function BeheerView() {
   const [sluitingsredenen, setSluitingsredenen] = useState(initialSluitingsredenen)
   const [relatierollen, setRelatierollen] = useState(initialRelatierollen)
   const [bevestigingsSjablonen, setBevestigingsSjablonen] = useState(initialBevestigingsSjablonen)
+  const [contracten, setContracten] = useState(initialContracten)
 
-  // Wizard state for bevestigingssjablonen
+  // Wizard state for bevestigingssjablonen & contracten
   const [wizardStep, setWizardStep] = useState(1)
   const [wizardMode, setWizardMode] = useState<'list' | 'wizard'>('list')
+  const [contractYear, setContractYear] = useState(2026)
+  const [contractFilter, setContractFilter] = useState<'Actief' | 'Archief'>('Actief')
 
   // Update state
   const [updateStatus, setUpdateStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
@@ -287,6 +314,7 @@ export default function BeheerView() {
     else if (activeSection === 'Sluitingsredenen') setSluitingsredenen((prev) => prev.filter((i) => i.id !== id))
     else if (activeSection === 'Relatierollen') setRelatierollen((prev) => prev.filter((i) => i.id !== id))
     else if (activeSection === 'Bevestigingssjablonen') setBevestigingsSjablonen((prev) => prev.filter((i) => i.id !== id))
+    else if (activeSection === 'Contracten') setContracten((prev) => prev.filter((i) => i.id !== id))
     setConfirmDelete(null)
     cancelEdit()
   }
@@ -310,6 +338,7 @@ export default function BeheerView() {
     else if (activeSection === 'Sluitingsredenen') setSluitingsredenen((prev) => upsert(prev, item as SluitingsReden))
     else if (activeSection === 'Relatierollen') setRelatierollen((prev) => upsert(prev, item as RelatieRol))
     else if (activeSection === 'Bevestigingssjablonen') setBevestigingsSjablonen((prev) => upsert(prev, item as BevestigingsSjabloon))
+    else if (activeSection === 'Contracten') setContracten((prev) => upsert(prev, item as Contract))
     cancelEdit()
     setWizardMode('list')
     setWizardStep(1)
@@ -352,6 +381,9 @@ export default function BeheerView() {
 
       case 'Bevestigingssjablonen':
         return renderBevestigingsSjablonenView()
+
+      case 'Contracten':
+        return renderContractenView()
 
       case 'Locaties':
         return renderTableWithPanel(
@@ -727,6 +759,397 @@ export default function BeheerView() {
             </div>
           </div>
         )}
+      </div>
+    )
+  }
+
+  function renderContractenView() {
+    const contractWizardSteps = [
+      { nr: 1, label: 'Type contract' },
+      { nr: 2, label: 'Basisgegevens' },
+      { nr: 3, label: 'Verzekeraars' },
+      { nr: 4, label: 'Budget en tarieven' },
+      { nr: 5, label: 'Voltooid' },
+    ]
+
+    function startContractCreate() {
+      setWizardMode('wizard')
+      setWizardStep(1)
+      setIsCreating(true)
+      setSelectedId(null)
+      const maxNr = contracten.reduce((max, c) => Math.max(max, c.nummer), 0)
+      setEditForm({
+        naam: '',
+        nummer: maxNr + 1,
+        type: 'Zorgprestatiemodel',
+        administratie: 'Mijn administratie',
+        einddatum: `${contractYear}-12-31`,
+        verzekeraars: [],
+        budget: null,
+        actief: true,
+        gearchiveerd: false,
+      })
+    }
+
+    function startContractEdit(item: Contract) {
+      setWizardMode('wizard')
+      setWizardStep(1)
+      setIsCreating(false)
+      setSelectedId(item.id)
+      setEditForm({ ...item, verzekeraars: [...item.verzekeraars] })
+    }
+
+    function cancelContractWizard() {
+      setWizardMode('list')
+      setWizardStep(1)
+      cancelEdit()
+    }
+
+    // Group contracts by type
+    const filteredContracten = contracten.filter((c) => {
+      const year = parseInt(c.einddatum.slice(0, 4))
+      if (year !== contractYear) return false
+      if (contractFilter === 'Actief') return c.actief && !c.gearchiveerd
+      return c.gearchiveerd
+    })
+
+    const grouped = contractTypes.map((type) => ({
+      type,
+      items: filteredContracten.filter((c) => c.type === type),
+    })).filter((g) => g.items.length > 0)
+
+    function formatDate(d: string) {
+      const [y, m, day] = d.split('-')
+      return `${day}-${m}-${y}`
+    }
+
+    // List view
+    if (wizardMode === 'list') {
+      return (
+        <div className="flex flex-1 overflow-hidden">
+          <div className="flex-1 overflow-auto">
+            {/* Toolbar */}
+            <div className="flex items-center gap-3 px-4 py-2 border-b border-gray-200 bg-white">
+              <select
+                value={contractYear}
+                onChange={(e) => setContractYear(parseInt(e.target.value))}
+                className="text-sm border border-gray-300 rounded px-2 py-1"
+              >
+                <option value={2024}>2024</option>
+                <option value={2025}>2025</option>
+                <option value={2026}>2026</option>
+                <option value={2027}>2027</option>
+              </select>
+              <div className="flex border border-gray-300 rounded overflow-hidden">
+                <button
+                  onClick={() => setContractFilter('Actief')}
+                  className={`px-3 py-1 text-sm ${contractFilter === 'Actief' ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
+                >
+                  Actief
+                </button>
+                <button
+                  onClick={() => setContractFilter('Archief')}
+                  className={`px-3 py-1 text-sm border-l border-gray-300 ${contractFilter === 'Archief' ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
+                >
+                  Archief
+                </button>
+              </div>
+              <button
+                onClick={startContractCreate}
+                className="flex items-center gap-1 text-sm text-blue-600 hover:text-blue-800"
+              >
+                <Plus className="w-4 h-4" />
+                Nieuw contract
+              </button>
+            </div>
+
+            {/* Table */}
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-gray-200 bg-gray-50">
+                  <th className="text-left px-4 py-2 font-medium text-gray-600 w-12">Nr.</th>
+                  <th className="text-left px-4 py-2 font-medium text-gray-600">Contract</th>
+                  <th className="text-left px-4 py-2 font-medium text-gray-600">Administratie</th>
+                  <th className="text-left px-4 py-2 font-medium text-gray-600">Einddatum</th>
+                </tr>
+              </thead>
+              <tbody>
+                {grouped.map((group) => (
+                  <React.Fragment key={group.type}>
+                    <tr className="bg-gray-100 border-b border-gray-200">
+                      <td colSpan={4} className="px-4 py-2 font-semibold text-gray-700 text-xs uppercase tracking-wide">
+                        {group.type}
+                      </td>
+                    </tr>
+                    {group.items.map((item) => (
+                      <tr
+                        key={item.id}
+                        className={`border-b border-gray-100 cursor-pointer hover:bg-blue-50 transition-colors ${
+                          selectedId === item.id ? 'bg-blue-50' : ''
+                        }`}
+                        onClick={() => startContractEdit(item)}
+                      >
+                        <td className="px-4 py-2 text-gray-500">{item.nummer}</td>
+                        <td className="px-4 py-2 text-gray-700 max-w-md truncate">{item.naam}</td>
+                        <td className="px-4 py-2 text-gray-500">{item.administratie}</td>
+                        <td className="px-4 py-2 text-gray-500">{formatDate(item.einddatum)}</td>
+                      </tr>
+                    ))}
+                  </React.Fragment>
+                ))}
+                {grouped.length === 0 && (
+                  <tr>
+                    <td colSpan={4} className="px-4 py-8 text-center text-gray-400">
+                      Geen contracten gevonden voor {contractYear}
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )
+    }
+
+    // Wizard view
+    const verzekeraarsText = ((editForm.verzekeraars as string[]) || []).join('\n')
+
+    return (
+      <div className="flex-1 overflow-auto bg-white">
+        <div className="max-w-2xl mx-auto py-6 px-4">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-lg font-semibold text-gray-900">
+              {isCreating ? 'Nieuw contract toevoegen' : 'Contract bewerken'}
+            </h2>
+            <button onClick={cancelContractWizard} className="text-gray-400 hover:text-gray-600">
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+
+          {/* Step indicator */}
+          <div className="flex items-center mb-8">
+            {contractWizardSteps.map((step, i) => (
+              <React.Fragment key={step.nr}>
+                <button
+                  onClick={() => setWizardStep(step.nr)}
+                  className={`flex items-center gap-2 shrink-0 ${
+                    wizardStep === step.nr
+                      ? 'text-blue-600'
+                      : wizardStep > step.nr
+                      ? 'text-green-600'
+                      : 'text-gray-400'
+                  }`}
+                >
+                  <span
+                    className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-medium border-2 ${
+                      wizardStep === step.nr
+                        ? 'border-blue-600 bg-blue-50 text-blue-600'
+                        : wizardStep > step.nr
+                        ? 'border-green-500 bg-green-50 text-green-600'
+                        : 'border-gray-300 text-gray-400'
+                    }`}
+                  >
+                    {wizardStep > step.nr ? <Check className="w-3.5 h-3.5" /> : step.nr}
+                  </span>
+                  <span className="text-xs font-medium hidden sm:inline">{step.label}</span>
+                </button>
+                {i < contractWizardSteps.length - 1 && (
+                  <div className={`flex-1 h-0.5 mx-2 ${wizardStep > step.nr ? 'bg-green-400' : 'bg-gray-200'}`} />
+                )}
+              </React.Fragment>
+            ))}
+          </div>
+
+          {/* Step content */}
+          <div className="bg-gray-50 rounded-lg border border-gray-200 p-6">
+            {wizardStep === 1 && (
+              <div className="space-y-4">
+                <h3 className="font-medium text-gray-900">Type contract:</h3>
+                <div className="space-y-2">
+                  {contractTypes.map((type) => (
+                    <label
+                      key={type}
+                      className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+                        (editForm.type as string) === type
+                          ? 'border-blue-500 bg-blue-50'
+                          : 'border-gray-200 bg-white hover:border-gray-300'
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="contractType"
+                        value={type}
+                        checked={(editForm.type as string) === type}
+                        onChange={(e) => updateField('type', e.target.value)}
+                        className="text-blue-600"
+                      />
+                      <span className="text-sm text-gray-700">{type}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {wizardStep === 2 && (
+              <div className="space-y-4">
+                <h3 className="font-medium text-gray-900">Basisgegevens</h3>
+                <FormField label="Contractnaam">
+                  <input
+                    type="text"
+                    value={(editForm.naam as string) || ''}
+                    onChange={(e) => updateField('naam', e.target.value)}
+                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+                    placeholder="Naam van het contract"
+                  />
+                </FormField>
+                <FormField label="Contractnummer">
+                  <input
+                    type="number"
+                    value={(editForm.nummer as number) || 0}
+                    onChange={(e) => updateField('nummer', parseInt(e.target.value) || 0)}
+                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+                  />
+                </FormField>
+                <FormField label="Administratie">
+                  <input
+                    type="text"
+                    value={(editForm.administratie as string) || ''}
+                    onChange={(e) => updateField('administratie', e.target.value)}
+                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+                  />
+                </FormField>
+                <FormField label="Einddatum">
+                  <input
+                    type="date"
+                    value={(editForm.einddatum as string) || ''}
+                    onChange={(e) => updateField('einddatum', e.target.value)}
+                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+                  />
+                </FormField>
+              </div>
+            )}
+
+            {wizardStep === 3 && (
+              <div className="space-y-4">
+                <h3 className="font-medium text-gray-900">Verzekeraars</h3>
+                <p className="text-xs text-gray-500">Voer verzekeraars in, één per regel (bijv. &quot;3311 Zilveren Kruis Zorgverzekeringen N.V.&quot;)</p>
+                <textarea
+                  value={verzekeraarsText}
+                  onChange={(e) => updateField('verzekeraars', e.target.value.split('\n').filter((v) => v.trim()))}
+                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm font-mono"
+                  rows={8}
+                  placeholder="3311 Zilveren Kruis Zorgverzekeringen N.V.&#10;3313 Interpolis Zorgverzekeringen NV"
+                />
+              </div>
+            )}
+
+            {wizardStep === 4 && (
+              <div className="space-y-4">
+                <h3 className="font-medium text-gray-900">Budget en tarieven</h3>
+                <FormField label="Budget (optioneel)">
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={(editForm.budget as number) ?? ''}
+                    onChange={(e) => updateField('budget', e.target.value ? parseFloat(e.target.value) : null)}
+                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+                    placeholder="Laat leeg indien geen budget"
+                  />
+                </FormField>
+                <FormField label="Actief">
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={(editForm.actief as boolean) || false}
+                      onChange={(e) => updateField('actief', e.target.checked)}
+                      className="rounded border-gray-300"
+                    />
+                    <span className="text-sm text-gray-600">Contract is actief</span>
+                  </label>
+                </FormField>
+              </div>
+            )}
+
+            {wizardStep === 5 && (
+              <div className="space-y-4">
+                <h3 className="font-medium text-gray-900">Overzicht</h3>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between py-1 border-b border-gray-100">
+                    <span className="text-gray-500">Type</span>
+                    <span className="text-gray-900">{editForm.type as string}</span>
+                  </div>
+                  <div className="flex justify-between py-1 border-b border-gray-100">
+                    <span className="text-gray-500">Naam</span>
+                    <span className="text-gray-900">{editForm.naam as string}</span>
+                  </div>
+                  <div className="flex justify-between py-1 border-b border-gray-100">
+                    <span className="text-gray-500">Nummer</span>
+                    <span className="text-gray-900">{editForm.nummer as number}</span>
+                  </div>
+                  <div className="flex justify-between py-1 border-b border-gray-100">
+                    <span className="text-gray-500">Administratie</span>
+                    <span className="text-gray-900">{editForm.administratie as string}</span>
+                  </div>
+                  <div className="flex justify-between py-1 border-b border-gray-100">
+                    <span className="text-gray-500">Einddatum</span>
+                    <span className="text-gray-900">{formatDate((editForm.einddatum as string) || '')}</span>
+                  </div>
+                  <div className="flex justify-between py-1 border-b border-gray-100">
+                    <span className="text-gray-500">Verzekeraars</span>
+                    <span className="text-gray-900">{((editForm.verzekeraars as string[]) || []).length} stuks</span>
+                  </div>
+                  <div className="flex justify-between py-1 border-b border-gray-100">
+                    <span className="text-gray-500">Actief</span>
+                    <span className="text-gray-900">{(editForm.actief as boolean) ? 'Ja' : 'Nee'}</span>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Navigation */}
+          <div className="flex justify-between mt-6">
+            <button
+              onClick={() => wizardStep === 1 ? cancelContractWizard() : setWizardStep(wizardStep - 1)}
+              className="px-4 py-2 text-sm text-gray-600 bg-gray-100 rounded hover:bg-gray-200"
+            >
+              {wizardStep === 1 ? 'Annuleren' : 'Vorige'}
+            </button>
+            {wizardStep < 5 ? (
+              <button
+                onClick={() => setWizardStep(wizardStep + 1)}
+                className="px-4 py-2 text-sm text-white bg-blue-600 rounded hover:bg-blue-700"
+              >
+                Volgende stap
+              </button>
+            ) : (
+              <button
+                onClick={() => saveItem()}
+                className="flex items-center gap-1 px-4 py-2 text-sm text-white bg-green-600 rounded hover:bg-green-700"
+              >
+                <Save className="w-3.5 h-3.5" />
+                Opslaan
+              </button>
+            )}
+          </div>
+
+          {!isCreating && (
+            <div className="mt-4 pt-4 border-t border-gray-200">
+              <button
+                onClick={() => {
+                  if (selectedId) {
+                    handleDelete(selectedId)
+                    cancelContractWizard()
+                  }
+                }}
+                className="flex items-center gap-1 px-3 py-1.5 bg-red-50 text-red-600 rounded text-sm hover:bg-red-100"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                Contract verwijderen
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     )
   }
