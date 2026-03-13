@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Settings, Plus, Edit, Trash2, Save, X, Check } from 'lucide-react'
+import { Settings, Plus, Edit, Trash2, Save, X, Check, RefreshCw, Download, AlertCircle, CheckCircle2 } from 'lucide-react'
 
 // Types for each section
 interface BeheerItem {
@@ -94,6 +94,7 @@ const beheerSections = [
   'Relaties',
   'Sluitingsredenen',
   'Wachtlijsten',
+  'Applicatie-update',
 ]
 
 const placeholderSections = new Set([
@@ -244,6 +245,12 @@ export default function BeheerView() {
   // Wizard state for bevestigingssjablonen
   const [wizardStep, setWizardStep] = useState(1)
   const [wizardMode, setWizardMode] = useState<'list' | 'wizard'>('list')
+
+  // Update state
+  const [updateStatus, setUpdateStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
+  const [updateLogs, setUpdateLogs] = useState<string[]>([])
+  const [systemInfo, setSystemInfo] = useState<{ branch: string; remote: string; recentCommits: string[]; version: string } | null>(null)
+  const [systemInfoLoading, setSystemInfoLoading] = useState(false)
 
   // Selection state
   const [selectedId, setSelectedId] = useState<string | null>(null)
@@ -414,6 +421,9 @@ export default function BeheerView() {
           { naam: '', omschrijving: '' },
           renderRelatieRolForm
         )
+
+      case 'Applicatie-update':
+        return renderApplicatieUpdateView()
 
       default:
         return null
@@ -1025,6 +1035,150 @@ export default function BeheerView() {
                 <Trash2 className="w-3.5 h-3.5" />
                 Sjabloon verwijderen
               </button>
+            </div>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  function renderApplicatieUpdateView() {
+    function loadSystemInfo() {
+      setSystemInfoLoading(true)
+      fetch('/api/ggz/system/status')
+        .then((r) => r.json())
+        .then((data) => {
+          setSystemInfo(data)
+          setSystemInfoLoading(false)
+        })
+        .catch(() => {
+          setSystemInfoLoading(false)
+        })
+    }
+
+    function runUpdate() {
+      setUpdateStatus('loading')
+      setUpdateLogs([])
+      fetch('/api/ggz/system/update', { method: 'POST' })
+        .then((r) => r.json())
+        .then((data) => {
+          setUpdateLogs(data.logs || [])
+          setUpdateStatus(data.success ? 'success' : 'error')
+          // Refresh system info after update
+          loadSystemInfo()
+        })
+        .catch((err) => {
+          setUpdateLogs([`Fout bij verbinding: ${err.message}`])
+          setUpdateStatus('error')
+        })
+    }
+
+    return (
+      <div className="flex-1 overflow-auto bg-white">
+        <div className="max-w-3xl mx-auto py-6 px-4">
+          <h2 className="text-lg font-semibold text-gray-900 mb-6">Applicatie-update</h2>
+
+          {/* System info card */}
+          <div className="bg-gray-50 rounded-lg border border-gray-200 p-5 mb-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-medium text-gray-900">Systeeminformatie</h3>
+              <button
+                onClick={loadSystemInfo}
+                disabled={systemInfoLoading}
+                className="flex items-center gap-1 text-sm text-blue-600 hover:text-blue-800 disabled:text-gray-400"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${systemInfoLoading ? 'animate-spin' : ''}`} />
+                Vernieuwen
+              </button>
+            </div>
+            {systemInfo ? (
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between py-1 border-b border-gray-100">
+                  <span className="text-gray-500">Versie</span>
+                  <span className="text-gray-900 font-mono">{systemInfo.version}</span>
+                </div>
+                <div className="flex justify-between py-1 border-b border-gray-100">
+                  <span className="text-gray-500">Branch</span>
+                  <span className="text-gray-900 font-mono">{systemInfo.branch}</span>
+                </div>
+                <div className="flex justify-between py-1 border-b border-gray-100">
+                  <span className="text-gray-500">Remote</span>
+                  <span className="text-gray-900 font-mono text-xs">{systemInfo.remote}</span>
+                </div>
+                <div className="pt-2">
+                  <span className="text-gray-500 text-xs">Recente commits:</span>
+                  <div className="mt-1 bg-gray-900 rounded p-3 font-mono text-xs text-green-400 space-y-0.5">
+                    {systemInfo.recentCommits.map((line, i) => (
+                      <div key={i}>{line}</div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <p className="text-sm text-gray-500">
+                Klik op &quot;Vernieuwen&quot; om systeeminformatie op te halen.
+              </p>
+            )}
+          </div>
+
+          {/* Update action */}
+          <div className="bg-blue-50 rounded-lg border border-blue-200 p-5 mb-6">
+            <div className="flex items-start gap-4">
+              <Download className="w-8 h-8 text-blue-600 shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <h3 className="font-medium text-gray-900 mb-1">Update uitvoeren</h3>
+                <p className="text-sm text-gray-600 mb-4">
+                  Haalt de laatste code op van GitHub, installeert dependencies en bouwt de frontend opnieuw.
+                </p>
+                <button
+                  onClick={runUpdate}
+                  disabled={updateStatus === 'loading'}
+                  className={`flex items-center gap-2 px-4 py-2 rounded text-sm font-medium text-white ${
+                    updateStatus === 'loading'
+                      ? 'bg-gray-400 cursor-not-allowed'
+                      : 'bg-blue-600 hover:bg-blue-700'
+                  }`}
+                >
+                  <RefreshCw className={`w-4 h-4 ${updateStatus === 'loading' ? 'animate-spin' : ''}`} />
+                  {updateStatus === 'loading' ? 'Bezig met updaten...' : 'Nu updaten'}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Status banner */}
+          {updateStatus === 'success' && (
+            <div className="flex items-center gap-3 p-4 mb-6 bg-green-50 border border-green-200 rounded-lg">
+              <CheckCircle2 className="w-5 h-5 text-green-600 shrink-0" />
+              <p className="text-sm text-green-800">Update succesvol uitgevoerd. Herstart de backend om alle wijzigingen door te voeren.</p>
+            </div>
+          )}
+          {updateStatus === 'error' && (
+            <div className="flex items-center gap-3 p-4 mb-6 bg-red-50 border border-red-200 rounded-lg">
+              <AlertCircle className="w-5 h-5 text-red-600 shrink-0" />
+              <p className="text-sm text-red-800">Er zijn fouten opgetreden tijdens de update. Bekijk de logs hieronder.</p>
+            </div>
+          )}
+
+          {/* Update logs */}
+          {updateLogs.length > 0 && (
+            <div className="bg-gray-50 rounded-lg border border-gray-200 p-5">
+              <h3 className="font-medium text-gray-900 mb-3">Update log</h3>
+              <div className="bg-gray-900 rounded p-4 font-mono text-xs text-gray-300 max-h-96 overflow-auto space-y-0.5">
+                {updateLogs.map((line, i) => (
+                  <div
+                    key={i}
+                    className={
+                      line.startsWith('✓') ? 'text-green-400' :
+                      line.startsWith('✗') ? 'text-red-400' :
+                      line.startsWith('---') ? 'text-blue-400 font-bold mt-2' :
+                      'text-gray-300'
+                    }
+                  >
+                    {line}
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </div>
