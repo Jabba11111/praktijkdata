@@ -1142,7 +1142,7 @@ app.post('/api/ggz/rom/metingen', (req, res) => {
 // ROUTES: APPLICATIE UPDATE
 // ============================================================
 
-const projectRoot = path.join(__dirname, '..', '..');
+const projectRoot = process.cwd();
 
 app.get('/api/ggz/system/status', (_req, res) => {
   try {
