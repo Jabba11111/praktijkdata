@@ -86,6 +86,18 @@ interface Contract extends BeheerItem {
   gearchiveerd: boolean
 }
 
+type DocumentType = 'Documenten' | 'Communicatie'
+type GezondheidsInfo = 'Nee en niet te wijzigen' | 'Nee per document te wijzigen' | 'Ja per document te wijzigen' | 'Ja en niet te wijzigen'
+
+interface DocumentSjabloon extends BeheerItem {
+  documentType: DocumentType
+  bevatGezondheidsinfo: GezondheidsInfo
+  financieleBewaarplicht: boolean
+  dossiertypes: string[]
+  sjabloonInhoud: string
+  actief: boolean
+}
+
 // Sidebar sections
 const beheerSections = [
   'Afspraakstatussen',
@@ -111,7 +123,6 @@ const beheerSections = [
 ]
 
 const placeholderSections = new Set([
-  'Documentsjablonen',
   'E-mailsjablonen',
   'Huistaken',
   'Koppelingen',
@@ -241,6 +252,26 @@ const initialContracten: Contract[] = [
   { id: '7', naam: '0101 N.V. Univé Zorg 0699 IZA Zorgverzekeraar NV 0736 NV Zorgverzekeraar UMC 3334 IZA-VNG 3361 ZEKUR 7095 VGZ Zorgverzekeraar N.V.', nummer: 36, type: 'Zorgprestatiemodel', administratie: 'Mijn administratie', einddatum: '2026-12-31', verzekeraars: ['0101 N.V. Univé Zorg', '0699 IZA Zorgverzekeraar NV', '0736 NV Zorgverzekeraar UMC', '3334 IZA-VNG', '3361 ZEKUR', '7095 VGZ Zorgverzekeraar N.V.'], budget: null, actief: true, gearchiveerd: false },
 ]
 
+const documentTypes: DocumentType[] = ['Documenten', 'Communicatie']
+const gezondheidsInfoOpties: GezondheidsInfo[] = ['Nee en niet te wijzigen', 'Nee per document te wijzigen', 'Ja per document te wijzigen', 'Ja en niet te wijzigen']
+
+const initialDocumentSjablonen: DocumentSjabloon[] = [
+  { id: '1', naam: 'Behandelovereenkomst overige zorg', documentType: 'Documenten', bevatGezondheidsinfo: 'Nee en niet te wijzigen', financieleBewaarplicht: false, dossiertypes: ['Basis GGZ', 'Specialistisch GGZ', 'OVP'], sjabloonInhoud: '', actief: true },
+  { id: '2', naam: 'Behandelovereenkomst ZPM', documentType: 'Documenten', bevatGezondheidsinfo: 'Nee en niet te wijzigen', financieleBewaarplicht: false, dossiertypes: ['Basis GGZ', 'Specialistisch GGZ'], sjabloonInhoud: '', actief: true },
+  { id: '3', naam: 'Behandelplan Jeugdhulp', documentType: 'Documenten', bevatGezondheidsinfo: 'Ja per document te wijzigen', financieleBewaarplicht: false, dossiertypes: ['Jeugd GGZ'], sjabloonInhoud: '', actief: true },
+  { id: '4', naam: 'Behandelplan ZPM', documentType: 'Documenten', bevatGezondheidsinfo: 'Ja per document te wijzigen', financieleBewaarplicht: false, dossiertypes: ['Basis GGZ', 'Specialistisch GGZ'], sjabloonInhoud: '', actief: true },
+  { id: '5', naam: 'Briefpapier - leeg sjabloon', documentType: 'Documenten', bevatGezondheidsinfo: 'Nee per document te wijzigen', financieleBewaarplicht: false, dossiertypes: [], sjabloonInhoud: '', actief: true },
+  { id: '6', naam: 'Export cliëntdossier Jeugd', documentType: 'Documenten', bevatGezondheidsinfo: 'Ja en niet te wijzigen', financieleBewaarplicht: false, dossiertypes: ['Jeugd GGZ'], sjabloonInhoud: '', actief: true },
+  { id: '7', naam: 'Export cliëntdossier ZPM', documentType: 'Documenten', bevatGezondheidsinfo: 'Ja en niet te wijzigen', financieleBewaarplicht: false, dossiertypes: ['Basis GGZ', 'Specialistisch GGZ'], sjabloonInhoud: '', actief: true },
+  { id: '8', naam: 'Huisartsenbrief afsluiting', documentType: 'Documenten', bevatGezondheidsinfo: 'Ja per document te wijzigen', financieleBewaarplicht: false, dossiertypes: ['Basis GGZ', 'Specialistisch GGZ'], sjabloonInhoud: '', actief: true },
+  { id: '9', naam: 'Huisartsenbrief intake', documentType: 'Documenten', bevatGezondheidsinfo: 'Ja per document te wijzigen', financieleBewaarplicht: false, dossiertypes: ['Basis GGZ', 'Specialistisch GGZ'], sjabloonInhoud: '', actief: true },
+  { id: '10', naam: 'Overig', documentType: 'Documenten', bevatGezondheidsinfo: 'Nee per document te wijzigen', financieleBewaarplicht: false, dossiertypes: [], sjabloonInhoud: '', actief: true },
+  { id: '11', naam: 'Overig', documentType: 'Communicatie', bevatGezondheidsinfo: 'Nee per document te wijzigen', financieleBewaarplicht: false, dossiertypes: [], sjabloonInhoud: '', actief: true },
+  { id: '12', naam: 'Privacyverklaring 2025 (01-04-2025)', documentType: 'Documenten', bevatGezondheidsinfo: 'Nee en niet te wijzigen', financieleBewaarplicht: false, dossiertypes: [], sjabloonInhoud: '', actief: true },
+  { id: '13', naam: 'Privacyverklaring ZPM', documentType: 'Documenten', bevatGezondheidsinfo: 'Nee en niet te wijzigen', financieleBewaarplicht: false, dossiertypes: ['Basis GGZ', 'Specialistisch GGZ'], sjabloonInhoud: '', actief: true },
+  { id: '14', naam: 'Verwijzing ontvangen', documentType: 'Documenten', bevatGezondheidsinfo: 'Nee per document te wijzigen', financieleBewaarplicht: false, dossiertypes: [], sjabloonInhoud: '', actief: true },
+]
+
 const factureerOpties = [
   'Geweest, wel factureren',
   'No-show, wel factureren',
@@ -266,6 +297,7 @@ export default function BeheerView() {
   const [relatierollen, setRelatierollen] = useState(initialRelatierollen)
   const [bevestigingsSjablonen, setBevestigingsSjablonen] = useState(initialBevestigingsSjablonen)
   const [contracten, setContracten] = useState(initialContracten)
+  const [documentSjablonen, setDocumentSjablonen] = useState(initialDocumentSjablonen)
 
   // Wizard state for bevestigingssjablonen & contracten
   const [wizardStep, setWizardStep] = useState(1)
@@ -315,6 +347,7 @@ export default function BeheerView() {
     else if (activeSection === 'Relatierollen') setRelatierollen((prev) => prev.filter((i) => i.id !== id))
     else if (activeSection === 'Bevestigingssjablonen') setBevestigingsSjablonen((prev) => prev.filter((i) => i.id !== id))
     else if (activeSection === 'Contracten') setContracten((prev) => prev.filter((i) => i.id !== id))
+    else if (activeSection === 'Documentsjablonen') setDocumentSjablonen((prev) => prev.filter((i) => i.id !== id))
     setConfirmDelete(null)
     cancelEdit()
   }
@@ -339,6 +372,7 @@ export default function BeheerView() {
     else if (activeSection === 'Relatierollen') setRelatierollen((prev) => upsert(prev, item as RelatieRol))
     else if (activeSection === 'Bevestigingssjablonen') setBevestigingsSjablonen((prev) => upsert(prev, item as BevestigingsSjabloon))
     else if (activeSection === 'Contracten') setContracten((prev) => upsert(prev, item as Contract))
+    else if (activeSection === 'Documentsjablonen') setDocumentSjablonen((prev) => upsert(prev, item as DocumentSjabloon))
     cancelEdit()
     setWizardMode('list')
     setWizardStep(1)
@@ -384,6 +418,9 @@ export default function BeheerView() {
 
       case 'Contracten':
         return renderContractenView()
+
+      case 'Documentsjablonen':
+        return renderDocumentSjablonenView()
 
       case 'Locaties':
         return renderTableWithPanel(
@@ -1146,6 +1183,339 @@ export default function BeheerView() {
               >
                 <Trash2 className="w-3.5 h-3.5" />
                 Contract verwijderen
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  function renderDocumentSjablonenView() {
+    const docWizardSteps = [
+      { nr: 1, label: 'Basisgegevens' },
+      { nr: 2, label: 'Dossiertypes' },
+      { nr: 3, label: 'Sjabloon' },
+      { nr: 4, label: 'Voltooid' },
+    ]
+
+    function startDocWizardCreate() {
+      setWizardMode('wizard')
+      setWizardStep(1)
+      setIsCreating(true)
+      setSelectedId(null)
+      setEditForm({
+        naam: '',
+        documentType: 'Documenten' as DocumentType,
+        bevatGezondheidsinfo: 'Nee en niet te wijzigen' as GezondheidsInfo,
+        financieleBewaarplicht: false,
+        dossiertypes: [],
+        sjabloonInhoud: '',
+        actief: true,
+      })
+    }
+
+    function startDocWizardEdit(item: DocumentSjabloon) {
+      setWizardMode('wizard')
+      setWizardStep(1)
+      setIsCreating(false)
+      setSelectedId(item.id)
+      setEditForm({ ...item, dossiertypes: [...item.dossiertypes] })
+    }
+
+    function cancelDocWizard() {
+      setWizardMode('list')
+      setWizardStep(1)
+      cancelEdit()
+    }
+
+    function finishDocWizard() {
+      saveItem()
+    }
+
+    const availableDossierTypes = dossierTypes.map((dt) => dt.naam)
+
+    // List view
+    if (wizardMode === 'list') {
+      return (
+        <div className="flex flex-1 overflow-hidden">
+          <div className="flex-1 overflow-auto">
+            <div className="flex items-center gap-3 px-4 py-2 border-b border-gray-200 bg-white">
+              <select
+                value={filterStatus}
+                onChange={(e) => setFilterStatus(e.target.value)}
+                className="text-sm border border-gray-300 rounded px-2 py-1"
+              >
+                <option>Actief</option>
+                <option>Alle</option>
+              </select>
+              <button
+                onClick={startDocWizardCreate}
+                className="flex items-center gap-1 text-sm text-blue-600 hover:text-blue-800"
+              >
+                <Plus className="w-4 h-4" />
+                Nieuw documentsjabloon
+              </button>
+            </div>
+
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-gray-200 bg-gray-50">
+                  <th className="text-left px-4 py-2 font-medium text-gray-600">Naam</th>
+                  <th className="text-left px-4 py-2 font-medium text-gray-600">Documenttype</th>
+                </tr>
+              </thead>
+              <tbody>
+                {documentSjablonen
+                  .filter((item) => filterStatus === 'Alle' || item.actief)
+                  .map((item) => (
+                  <tr
+                    key={item.id}
+                    className="border-b border-gray-100 cursor-pointer hover:bg-blue-50 transition-colors"
+                    onClick={() => startDocWizardEdit(item)}
+                  >
+                    <td className="px-4 py-2 text-gray-700">{item.naam}</td>
+                    <td className="px-4 py-2 text-gray-500">{item.documentType}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )
+    }
+
+    // Wizard view
+    return (
+      <div className="flex-1 overflow-auto bg-white">
+        <div className="max-w-2xl mx-auto py-6 px-4">
+          {/* Header */}
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-lg font-semibold text-gray-900">
+              {isCreating ? 'Nieuw documentsjabloon toevoegen' : 'Documentsjabloon bewerken'}
+            </h2>
+            <button onClick={cancelDocWizard} className="text-gray-400 hover:text-gray-600">
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+
+          {/* Step indicator */}
+          <div className="flex items-center mb-8">
+            {docWizardSteps.map((step, i) => (
+              <React.Fragment key={step.nr}>
+                <button
+                  onClick={() => setWizardStep(step.nr)}
+                  className={`flex items-center gap-2 shrink-0 ${
+                    wizardStep === step.nr
+                      ? 'text-blue-600'
+                      : wizardStep > step.nr
+                      ? 'text-green-600'
+                      : 'text-gray-400'
+                  }`}
+                >
+                  <span
+                    className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-medium border-2 ${
+                      wizardStep === step.nr
+                        ? 'border-blue-600 bg-blue-50 text-blue-600'
+                        : wizardStep > step.nr
+                        ? 'border-green-500 bg-green-50 text-green-600'
+                        : 'border-gray-300 text-gray-400'
+                    }`}
+                  >
+                    {wizardStep > step.nr ? <Check className="w-3.5 h-3.5" /> : step.nr}
+                  </span>
+                  <span className="text-xs font-medium hidden sm:inline">{step.label}</span>
+                </button>
+                {i < docWizardSteps.length - 1 && (
+                  <div className={`flex-1 h-0.5 mx-2 ${wizardStep > step.nr ? 'bg-green-400' : 'bg-gray-200'}`} />
+                )}
+              </React.Fragment>
+            ))}
+          </div>
+
+          {/* Step content */}
+          <div className="bg-gray-50 rounded-lg border border-gray-200 p-6">
+            {wizardStep === 1 && (
+              <div className="space-y-4">
+                <h3 className="font-medium text-gray-900">Basisgegevens</h3>
+                <FormField label="Documenttype:">
+                  <div className="flex gap-4">
+                    {documentTypes.map((dt) => (
+                      <label key={dt} className="flex items-center gap-2">
+                        <input
+                          type="radio"
+                          name="documentType"
+                          value={dt}
+                          checked={(editForm.documentType as string) === dt}
+                          onChange={(e) => updateField('documentType', e.target.value)}
+                          className="text-blue-600"
+                        />
+                        <span className="text-sm text-gray-700">{dt}</span>
+                      </label>
+                    ))}
+                  </div>
+                </FormField>
+                <FormField label="Naam:">
+                  <input
+                    type="text"
+                    value={(editForm.naam as string) || ''}
+                    onChange={(e) => updateField('naam', e.target.value)}
+                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+                    placeholder="Naam van het sjabloon"
+                  />
+                </FormField>
+                <FormField label="Bevat gezondheidsinfo:">
+                  <select
+                    value={(editForm.bevatGezondheidsinfo as string) || 'Nee en niet te wijzigen'}
+                    onChange={(e) => updateField('bevatGezondheidsinfo', e.target.value)}
+                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+                  >
+                    {gezondheidsInfoOpties.map((opt) => (
+                      <option key={opt} value={opt}>{opt}</option>
+                    ))}
+                  </select>
+                </FormField>
+                <FormField label="Financiële bewaarplicht:">
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={(editForm.financieleBewaarplicht as boolean) || false}
+                      onChange={(e) => updateField('financieleBewaarplicht', e.target.checked)}
+                      className="rounded border-gray-300"
+                    />
+                    <span className="text-sm text-gray-600">{(editForm.financieleBewaarplicht as boolean) ? 'Ja' : 'Nee'}</span>
+                  </label>
+                </FormField>
+              </div>
+            )}
+
+            {wizardStep === 2 && (
+              <div className="space-y-4">
+                <h3 className="font-medium text-gray-900">Dossiertypes</h3>
+                <p className="text-sm text-gray-500">Selecteer de dossiertypes waarvoor dit sjabloon beschikbaar is.</p>
+                <div className="space-y-2">
+                  {availableDossierTypes.map((dt) => (
+                    <label
+                      key={dt}
+                      className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+                        ((editForm.dossiertypes as string[]) || []).includes(dt)
+                          ? 'border-blue-500 bg-blue-50'
+                          : 'border-gray-200 bg-white hover:border-gray-300'
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={((editForm.dossiertypes as string[]) || []).includes(dt)}
+                        onChange={(e) => {
+                          const current = (editForm.dossiertypes as string[]) || []
+                          if (e.target.checked) {
+                            updateField('dossiertypes', [...current, dt])
+                          } else {
+                            updateField('dossiertypes', current.filter((d) => d !== dt))
+                          }
+                        }}
+                        className="rounded border-gray-300 text-blue-600"
+                      />
+                      <span className="text-sm text-gray-700">{dt}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {wizardStep === 3 && (
+              <div className="space-y-4">
+                <h3 className="font-medium text-gray-900">Sjabloon</h3>
+                <p className="text-sm text-gray-500">
+                  Definieer de inhoud van het sjabloon. Gebruik variabelen zoals {'{client_naam}'}, {'{datum}'}, {'{behandelaar}'}.
+                </p>
+                <FormField label="Sjabloon inhoud:">
+                  <textarea
+                    value={(editForm.sjabloonInhoud as string) || ''}
+                    onChange={(e) => updateField('sjabloonInhoud', e.target.value)}
+                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm font-mono"
+                    rows={12}
+                    placeholder="Voer hier de sjablooninhoud in..."
+                  />
+                </FormField>
+              </div>
+            )}
+
+            {wizardStep === 4 && (
+              <div className="space-y-4">
+                <h3 className="font-medium text-gray-900">Overzicht</h3>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between py-1 border-b border-gray-100">
+                    <span className="text-gray-500">Documenttype</span>
+                    <span className="text-gray-900">{editForm.documentType as string}</span>
+                  </div>
+                  <div className="flex justify-between py-1 border-b border-gray-100">
+                    <span className="text-gray-500">Naam</span>
+                    <span className="text-gray-900">{editForm.naam as string}</span>
+                  </div>
+                  <div className="flex justify-between py-1 border-b border-gray-100">
+                    <span className="text-gray-500">Bevat gezondheidsinfo</span>
+                    <span className="text-gray-900">{editForm.bevatGezondheidsinfo as string}</span>
+                  </div>
+                  <div className="flex justify-between py-1 border-b border-gray-100">
+                    <span className="text-gray-500">Financiële bewaarplicht</span>
+                    <span className="text-gray-900">{(editForm.financieleBewaarplicht as boolean) ? 'Ja' : 'Nee'}</span>
+                  </div>
+                  <div className="flex justify-between py-1 border-b border-gray-100">
+                    <span className="text-gray-500">Dossiertypes</span>
+                    <span className="text-gray-900">{((editForm.dossiertypes as string[]) || []).join(', ') || 'Geen'}</span>
+                  </div>
+                  <div className="py-1 border-b border-gray-100">
+                    <span className="text-gray-500">Sjabloon inhoud</span>
+                    <pre className="mt-1 text-xs text-gray-700 bg-white p-2 rounded border border-gray-200 whitespace-pre-wrap max-h-40 overflow-y-auto">
+                      {(editForm.sjabloonInhoud as string) || '(Leeg)'}
+                    </pre>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Navigation buttons */}
+          <div className="flex justify-between mt-6">
+            <button
+              onClick={() => wizardStep === 1 ? cancelDocWizard() : setWizardStep(wizardStep - 1)}
+              className="px-4 py-2 text-sm text-gray-600 bg-gray-100 rounded hover:bg-gray-200"
+            >
+              {wizardStep === 1 ? 'Annuleren' : 'Vorige stap'}
+            </button>
+            {wizardStep < 4 ? (
+              <button
+                onClick={() => setWizardStep(wizardStep + 1)}
+                className="px-4 py-2 text-sm text-white bg-blue-600 rounded hover:bg-blue-700"
+              >
+                Volgende stap
+              </button>
+            ) : (
+              <button
+                onClick={finishDocWizard}
+                className="flex items-center gap-1 px-4 py-2 text-sm text-white bg-green-600 rounded hover:bg-green-700"
+              >
+                <Save className="w-3.5 h-3.5" />
+                Opslaan
+              </button>
+            )}
+          </div>
+
+          {/* Delete button for editing */}
+          {!isCreating && (
+            <div className="mt-4 pt-4 border-t border-gray-200">
+              <button
+                onClick={() => {
+                  if (selectedId) {
+                    handleDelete(selectedId)
+                    cancelDocWizard()
+                  }
+                }}
+                className="flex items-center gap-1 px-3 py-1.5 bg-red-50 text-red-600 rounded text-sm hover:bg-red-100"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                Sjabloon verwijderen
               </button>
             </div>
           )}
