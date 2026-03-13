@@ -1469,9 +1469,14 @@ export default function BeheerView() {
     function loadSystemInfo() {
       setSystemInfoLoading(true)
       fetch('/api/ggz/system/status')
-        .then((r) => r.json())
+        .then((r) => {
+          if (!r.ok) throw new Error(`HTTP ${r.status}`)
+          return r.json()
+        })
         .then((data) => {
-          setSystemInfo(data)
+          if (data.branch && data.recentCommits) {
+            setSystemInfo(data)
+          }
           setSystemInfoLoading(false)
         })
         .catch(() => {
@@ -1483,11 +1488,13 @@ export default function BeheerView() {
       setUpdateStatus('loading')
       setUpdateLogs([])
       fetch('/api/ggz/system/update', { method: 'POST' })
-        .then((r) => r.json())
+        .then((r) => {
+          if (!r.ok) throw new Error(`HTTP ${r.status}`)
+          return r.json()
+        })
         .then((data) => {
           setUpdateLogs(data.logs || [])
           setUpdateStatus(data.success ? 'success' : 'error')
-          // Refresh system info after update
           loadSystemInfo()
         })
         .catch((err) => {
@@ -1531,7 +1538,7 @@ export default function BeheerView() {
                 <div className="pt-2">
                   <span className="text-gray-500 text-xs">Recente commits:</span>
                   <div className="mt-1 bg-gray-900 rounded p-3 font-mono text-xs text-green-400 space-y-0.5">
-                    {systemInfo.recentCommits.map((line, i) => (
+                    {(systemInfo.recentCommits || []).map((line, i) => (
                       <div key={i}>{line}</div>
                     ))}
                   </div>
