@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import React, { useState } from 'react'
 import { Settings, Plus, Edit, Trash2, Save, X, Check } from 'lucide-react'
 
 // Types for each section
@@ -13,10 +13,17 @@ interface AfspraakStatus extends BeheerItem {
   standaard: boolean
 }
 
+interface TijdConfig {
+  standaard: number
+  min: number
+  max: number
+}
+
 interface AfspraakType extends BeheerItem {
-  kleur: string
-  duur: number
-  factureerbaar: boolean
+  categorie: string
+  directeTijd: TijdConfig
+  indirecteTijd: TijdConfig
+  reistijd: TijdConfig
 }
 
 interface Locatie extends BeheerItem {
@@ -100,14 +107,42 @@ const initialAfspraakStatussen: AfspraakStatus[] = [
   { id: '4', naam: 'Te laat afgezegd', factureren: 'No-show, wel factureren', standaard: false },
 ]
 
+const t = (s: number, mn: number, mx: number): TijdConfig => ({ standaard: s, min: mn, max: mx })
+
 const initialAfspraakTypes: AfspraakType[] = [
-  { id: '1', naam: 'Intake', kleur: '#3b82f6', duur: 60, factureerbaar: true },
-  { id: '2', naam: 'Consult', kleur: '#22c55e', duur: 45, factureerbaar: true },
-  { id: '3', naam: 'Crisiscontact', kleur: '#ef4444', duur: 30, factureerbaar: true },
-  { id: '4', naam: 'Groepstherapie', kleur: '#a855f7', duur: 90, factureerbaar: true },
-  { id: '5', naam: 'Telefonisch consult', kleur: '#eab308', duur: 15, factureerbaar: true },
-  { id: '6', naam: 'E-health', kleur: '#06b6d4', duur: 0, factureerbaar: true },
+  // Overige afspraken
+  { id: '1', naam: 'Overige afspraak', categorie: 'Overige afspraken', directeTijd: t(45, 10, 540), indirecteTijd: t(0, 0, 0), reistijd: t(0, 0, 0) },
+  { id: '2', naam: 'Vakantie', categorie: 'Overige afspraken', directeTijd: t(45, 10, 600), indirecteTijd: t(0, 0, 0), reistijd: t(0, 0, 0) },
+  { id: '3', naam: 'Ziek', categorie: 'Overige afspraken', directeTijd: t(45, 10, 480), indirecteTijd: t(0, 0, 0), reistijd: t(0, 0, 0) },
+  // Overige zorg
+  { id: '4', naam: 'Consult', categorie: 'Overige zorg', directeTijd: t(45, 10, 120), indirecteTijd: t(15, 0, 60), reistijd: t(0, 0, 0) },
+  { id: '5', naam: 'E-consult, videobellen', categorie: 'Overige zorg', directeTijd: t(45, 0, 60), indirecteTijd: t(15, 0, 30), reistijd: t(0, 0, 0) },
+  { id: '6', naam: 'Groepsconsult', categorie: 'Overige zorg', directeTijd: t(45, 10, 120), indirecteTijd: t(15, 0, 60), reistijd: t(0, 0, 0) },
+  { id: '7', naam: 'Intake', categorie: 'Overige zorg', directeTijd: t(45, 10, 120), indirecteTijd: t(15, 0, 60), reistijd: t(0, 0, 0) },
+  { id: '8', naam: 'Verslaglegging', categorie: 'Overige zorg', directeTijd: t(45, 10, 120), indirecteTijd: t(15, 0, 60), reistijd: t(0, 0, 0) },
+  // Jeugdhulp
+  { id: '9', naam: 'Consult', categorie: 'Jeugdhulp', directeTijd: t(45, 10, 120), indirecteTijd: t(15, 0, 60), reistijd: t(0, 0, 0) },
+  { id: '10', naam: 'Groepsconsult', categorie: 'Jeugdhulp', directeTijd: t(90, 0, 120), indirecteTijd: t(0, 0, 30), reistijd: t(0, 0, 0) },
+  { id: '11', naam: 'Intake', categorie: 'Jeugdhulp', directeTijd: t(45, 10, 120), indirecteTijd: t(15, 0, 60), reistijd: t(0, 0, 0) },
+  { id: '12', naam: 'MDO', categorie: 'Jeugdhulp', directeTijd: t(45, 0, 60), indirecteTijd: t(0, 0, 0), reistijd: t(0, 0, 0) },
+  { id: '13', naam: 'Verslaglegging', categorie: 'Jeugdhulp', directeTijd: t(45, 0, 60), indirecteTijd: t(0, 0, 0), reistijd: t(0, 0, 0) },
+  // WMO
+  { id: '14', naam: 'Begeleiding', categorie: 'WMO', directeTijd: t(45, 10, 120), indirecteTijd: t(15, 0, 60), reistijd: t(0, 0, 0) },
+  { id: '15', naam: 'Intake', categorie: 'WMO', directeTijd: t(45, 10, 120), indirecteTijd: t(15, 0, 60), reistijd: t(0, 0, 0) },
+  { id: '16', naam: 'Verslaglegging', categorie: 'WMO', directeTijd: t(45, 10, 120), indirecteTijd: t(15, 0, 60), reistijd: t(0, 0, 0) },
+  // Zorgprestatiemodel
+  { id: '17', naam: 'Behandeling ZPM', categorie: 'Zorgprestatiemodel', directeTijd: t(45, 10, 120), indirecteTijd: t(15, 0, 30), reistijd: t(0, 0, 60) },
+  { id: '18', naam: 'Behandeling ZPM - E-consult', categorie: 'Zorgprestatiemodel', directeTijd: t(45, 10, 120), indirecteTijd: t(15, 0, 30), reistijd: t(0, 0, 60) },
+  { id: '19', naam: 'Diagnostiek ZPM', categorie: 'Zorgprestatiemodel', directeTijd: t(45, 0, 90), indirecteTijd: t(30, 0, 60), reistijd: t(0, 0, 0) },
+  { id: '20', naam: 'Groepsbehandeling', categorie: 'Zorgprestatiemodel', directeTijd: t(90, 0, 120), indirecteTijd: t(30, 0, 60), reistijd: t(0, 0, 0) },
+  { id: '21', naam: 'Intake ZPM', categorie: 'Zorgprestatiemodel', directeTijd: t(45, 10, 120), indirecteTijd: t(30, 0, 60), reistijd: t(0, 0, 0) },
+  { id: '22', naam: 'Intercollegiaal overleg - kort (tot 14 min.) (OV0007)', categorie: 'Zorgprestatiemodel', directeTijd: t(0, 0, 0), indirecteTijd: t(10, 5, 14), reistijd: t(0, 0, 0) },
+  { id: '23', naam: 'Intercollegiaal overleg - lang (vanaf 15 min.) (OV0008)', categorie: 'Zorgprestatiemodel', directeTijd: t(0, 0, 0), indirecteTijd: t(30, 15, 60), reistijd: t(0, 0, 0) },
+  { id: '24', naam: 'Niet-basispakketzorg consult (OV0165)', categorie: 'Zorgprestatiemodel', directeTijd: t(45, 30, 90), indirecteTijd: t(15, 0, 60), reistijd: t(0, 0, 0) },
+  { id: '25', naam: 'Schriftelijke informatieverstrekking (OV0018)', categorie: 'Zorgprestatiemodel', directeTijd: t(0, 0, 0), indirecteTijd: t(60, 0, 60), reistijd: t(0, 0, 0) },
 ]
+
+const afspraakTypeCategorieen = ['Overige afspraken', 'Overige zorg', 'Jeugdhulp', 'WMO', 'Zorgprestatiemodel']
 
 const initialLocaties: Locatie[] = [
   { id: '1', naam: 'Hoofdlocatie', adres: 'Keizersgracht 123', postcode: '1015 CJ', plaats: 'Amsterdam' },
@@ -272,18 +307,7 @@ export default function BeheerView() {
         )
 
       case 'Afspraaktypes':
-        return renderTableWithPanel(
-          afspraakTypes,
-          ['Naam', 'Kleur', 'Duur (min)', 'Factureerbaar'],
-          (item: AfspraakType) => [
-            item.naam,
-            <div key="k" className="flex items-center gap-2"><div className="w-4 h-4 rounded" style={{ backgroundColor: item.kleur }} />{item.kleur}</div>,
-            String(item.duur),
-            item.factureerbaar ? 'Ja' : 'Nee',
-          ],
-          { naam: '', kleur: '#3b82f6', duur: 45, factureerbaar: true },
-          renderAfspraakTypeForm
-        )
+        return renderAfspraakTypesView()
 
       case 'Locaties':
         return renderTableWithPanel(
@@ -533,27 +557,187 @@ export default function BeheerView() {
     )
   }
 
+  function formatTijd(tc: TijdConfig): string {
+    return `${tc.standaard} minuten (min: ${tc.min}; max: ${tc.max})`
+  }
+
+  function renderAfspraakTypesView() {
+    const grouped = afspraakTypeCategorieen.map((cat) => ({
+      categorie: cat,
+      items: afspraakTypes.filter((at) => at.categorie === cat),
+    }))
+
+    return (
+      <div className="flex flex-1 overflow-hidden">
+        <div className="flex-1 overflow-auto">
+          {/* Toolbar */}
+          <div className="flex items-center gap-3 px-4 py-2 border-b border-gray-200 bg-white">
+            <select
+              value={filterStatus}
+              onChange={(e) => setFilterStatus(e.target.value)}
+              className="text-sm border border-gray-300 rounded px-2 py-1"
+            >
+              <option>Actief</option>
+              <option>Alle</option>
+            </select>
+            <button
+              onClick={() => startCreate({
+                naam: '',
+                categorie: afspraakTypeCategorieen[0],
+                directeTijd: { standaard: 45, min: 10, max: 120 },
+                indirecteTijd: { standaard: 15, min: 0, max: 60 },
+                reistijd: { standaard: 0, min: 0, max: 0 },
+              })}
+              className="flex items-center gap-1 text-sm text-blue-600 hover:text-blue-800"
+            >
+              <Plus className="w-4 h-4" />
+              Nieuw afspraaktype
+            </button>
+          </div>
+
+          {/* Table header */}
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-gray-200 bg-gray-50">
+                <th className="text-left px-4 py-2 font-medium text-gray-600">Naam</th>
+                <th className="text-left px-4 py-2 font-medium text-gray-600">Directe tijd</th>
+                <th className="text-left px-4 py-2 font-medium text-gray-600">Indirecte tijd</th>
+                <th className="text-left px-4 py-2 font-medium text-gray-600">Reistijd</th>
+              </tr>
+            </thead>
+            <tbody>
+              {grouped.map((group) => (
+                <React.Fragment key={group.categorie}>
+                  {/* Category header */}
+                  <tr className="bg-gray-100 border-b border-gray-200">
+                    <td colSpan={4} className="px-4 py-2 font-semibold text-gray-700 text-xs uppercase tracking-wide">
+                      {group.categorie}
+                    </td>
+                  </tr>
+                  {group.items.map((item) => (
+                    <tr
+                      key={item.id}
+                      className={`border-b border-gray-100 cursor-pointer hover:bg-blue-50 transition-colors ${
+                        selectedId === item.id ? 'bg-blue-50' : ''
+                      }`}
+                      onClick={() => startEdit(item)}
+                    >
+                      <td className="px-4 py-2 text-gray-700">{item.naam}</td>
+                      <td className="px-4 py-2 text-gray-500 text-xs">{formatTijd(item.directeTijd)}</td>
+                      <td className="px-4 py-2 text-gray-500 text-xs">{formatTijd(item.indirecteTijd)}</td>
+                      <td className="px-4 py-2 text-gray-500 text-xs">{formatTijd(item.reistijd)}</td>
+                    </tr>
+                  ))}
+                </React.Fragment>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Edit panel */}
+        {(selectedId || isCreating) && (
+          <div className="w-96 border-l border-gray-200 bg-gray-50 overflow-y-auto shrink-0">
+            <div className="p-4">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-medium text-gray-900 text-sm">
+                  {isCreating ? 'Nieuw afspraaktype' : 'Afspraaktype bewerken'}
+                </h3>
+                <button onClick={cancelEdit} className="text-gray-400 hover:text-gray-600">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {renderAfspraakTypeForm()}
+
+              <div className="flex gap-2 mt-4 pt-4 border-t border-gray-200">
+                <button
+                  onClick={saveItem}
+                  className="flex items-center gap-1 px-3 py-1.5 bg-blue-600 text-white rounded text-sm hover:bg-blue-700"
+                >
+                  <Save className="w-3.5 h-3.5" />
+                  Opslaan
+                </button>
+                {!isCreating && (
+                  <button
+                    onClick={() => setConfirmDelete(selectedId)}
+                    className="flex items-center gap-1 px-3 py-1.5 bg-red-50 text-red-600 rounded text-sm hover:bg-red-100"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    Verwijderen
+                  </button>
+                )}
+              </div>
+
+              {confirmDelete && (
+                <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded">
+                  <p className="text-sm text-red-700 mb-2">Weet u het zeker?</p>
+                  <div className="flex gap-2">
+                    <button onClick={() => handleDelete(confirmDelete)} className="px-2 py-1 bg-red-600 text-white rounded text-xs">Ja, verwijderen</button>
+                    <button onClick={() => setConfirmDelete(null)} className="px-2 py-1 bg-gray-200 text-gray-700 rounded text-xs">Annuleren</button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    )
+  }
+
   function renderAfspraakTypeForm() {
+    const tijdField = (label: string, fieldKey: string) => {
+      const tc = (editForm[fieldKey] as TijdConfig) || { standaard: 0, min: 0, max: 0 }
+      return (
+        <div className="border border-gray-200 rounded p-3 bg-white">
+          <p className="text-xs font-medium text-gray-700 mb-2">{label}</p>
+          <div className="grid grid-cols-3 gap-2">
+            <div>
+              <label className="block text-[10px] text-gray-500 mb-0.5">Standaard</label>
+              <input
+                type="number"
+                value={tc.standaard}
+                onChange={(e) => updateField(fieldKey, { ...tc, standaard: parseInt(e.target.value) || 0 })}
+                className="w-full border border-gray-300 rounded px-1.5 py-1 text-xs"
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] text-gray-500 mb-0.5">Min</label>
+              <input
+                type="number"
+                value={tc.min}
+                onChange={(e) => updateField(fieldKey, { ...tc, min: parseInt(e.target.value) || 0 })}
+                className="w-full border border-gray-300 rounded px-1.5 py-1 text-xs"
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] text-gray-500 mb-0.5">Max</label>
+              <input
+                type="number"
+                value={tc.max}
+                onChange={(e) => updateField(fieldKey, { ...tc, max: parseInt(e.target.value) || 0 })}
+                className="w-full border border-gray-300 rounded px-1.5 py-1 text-xs"
+              />
+            </div>
+          </div>
+        </div>
+      )
+    }
+
     return (
       <div className="space-y-3">
         <FormField label="Naam">
           <input type="text" value={(editForm.naam as string) || ''} onChange={(e) => updateField('naam', e.target.value)} className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm" />
         </FormField>
-        <FormField label="Kleur">
-          <div className="flex items-center gap-2">
-            <input type="color" value={(editForm.kleur as string) || '#3b82f6'} onChange={(e) => updateField('kleur', e.target.value)} className="w-8 h-8 rounded border border-gray-300 cursor-pointer" />
-            <input type="text" value={(editForm.kleur as string) || ''} onChange={(e) => updateField('kleur', e.target.value)} className="flex-1 border border-gray-300 rounded px-2 py-1.5 text-sm" />
-          </div>
+        <FormField label="Categorie">
+          <select value={(editForm.categorie as string) || ''} onChange={(e) => updateField('categorie', e.target.value)} className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm">
+            {afspraakTypeCategorieen.map((cat) => (
+              <option key={cat} value={cat}>{cat}</option>
+            ))}
+          </select>
         </FormField>
-        <FormField label="Duur (minuten)">
-          <input type="number" value={(editForm.duur as number) || 0} onChange={(e) => updateField('duur', parseInt(e.target.value) || 0)} className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm" />
-        </FormField>
-        <FormField label="Factureerbaar">
-          <label className="flex items-center gap-2">
-            <input type="checkbox" checked={(editForm.factureerbaar as boolean) || false} onChange={(e) => updateField('factureerbaar', e.target.checked)} className="rounded border-gray-300" />
-            <span className="text-sm text-gray-600">Ja</span>
-          </label>
-        </FormField>
+        {tijdField('Directe tijd (minuten)', 'directeTijd')}
+        {tijdField('Indirecte tijd (minuten)', 'indirecteTijd')}
+        {tijdField('Reistijd (minuten)', 'reistijd')}
       </div>
     )
   }
