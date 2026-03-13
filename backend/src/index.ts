@@ -4,6 +4,7 @@ import Database from 'better-sqlite3';
 import { v4 as uuidv4 } from 'uuid';
 import fs from 'fs';
 import path from 'path';
+import { execSync } from 'child_process';
 
 const app = express();
 const PORT = 3001;
@@ -1131,6 +1132,66 @@ app.post('/api/ggz/rom/metingen', (req, res) => {
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
+});
+
+// ============================================================
+// ROUTES: APPLICATIE UPDATE
+// ============================================================
+
+const projectRoot = path.join(__dirname, '..', '..');
+
+app.get('/api/ggz/system/status', (_req, res) => {
+  try {
+    const gitLog = execSync('git log --oneline -5', { cwd: projectRoot, encoding: 'utf-8', timeout: 10000 });
+    const gitBranch = execSync('git branch --show-current', { cwd: projectRoot, encoding: 'utf-8', timeout: 5000 }).trim();
+    const gitRemote = execSync('git remote get-url origin', { cwd: projectRoot, encoding: 'utf-8', timeout: 5000 }).trim();
+
+    let packageJson: { version?: string } = {};
+    try {
+      packageJson = JSON.parse(fs.readFileSync(path.join(projectRoot, 'package.json'), 'utf-8'));
+    } catch { /* ignore */ }
+
+    res.json({
+      branch: gitBranch,
+      remote: gitRemote,
+      recentCommits: gitLog.trim().split('\n'),
+      version: packageJson.version || 'onbekend',
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/ggz/system/update', (_req, res) => {
+  const logs: string[] = [];
+  let hasError = false;
+
+  function runStep(label: string, command: string) {
+    logs.push(`--- ${label} ---`);
+    try {
+      const output = execSync(command, {
+        cwd: projectRoot,
+        encoding: 'utf-8',
+        timeout: 120000,
+        env: { ...process.env, GIT_TERMINAL_PROMPT: '0' },
+      });
+      if (output.trim()) logs.push(output.trim());
+      logs.push(`✓ ${label} geslaagd`);
+    } catch (err: any) {
+      hasError = true;
+      logs.push(`✗ ${label} mislukt: ${err.message}`);
+      if (err.stderr) logs.push(err.stderr.trim());
+    }
+  }
+
+  runStep('Git pull', 'git pull --ff-only');
+  runStep('Dependencies installeren', 'npm install');
+  runStep('Frontend bouwen', 'npm run build:frontend');
+
+  res.json({
+    success: !hasError,
+    logs,
+  });
 });
 
 // ============================================================
