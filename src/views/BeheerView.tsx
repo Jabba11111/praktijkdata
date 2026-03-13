@@ -63,6 +63,16 @@ interface RelatieRol extends BeheerItem {
   omschrijving: string
 }
 
+type BevestigingSoort = 'Afspraakbevestiging' | 'Afspraakherinnering' | 'Afspraakverwijdering' | 'Afspraakwijziging' | 'Intakebevestiging'
+
+interface BevestigingsSjabloon extends BeheerItem {
+  soort: BevestigingSoort
+  onderwerp: string
+  inhoud: string
+  verzendMoment: string
+  actief: boolean
+}
+
 // Sidebar sections
 const beheerSections = [
   'Afspraakstatussen',
@@ -87,7 +97,6 @@ const beheerSections = [
 ]
 
 const placeholderSections = new Set([
-  'Bevestigingssjablonen',
   'Contracten',
   'Documentsjablonen',
   'E-mailsjablonen',
@@ -191,6 +200,22 @@ const initialRelatierollen: RelatieRol[] = [
   { id: '5', naam: 'Collega', omschrijving: 'Collega behandelaar' },
 ]
 
+const bevestigingSoorten: BevestigingSoort[] = [
+  'Afspraakbevestiging',
+  'Afspraakherinnering',
+  'Afspraakverwijdering',
+  'Afspraakwijziging',
+  'Intakebevestiging',
+]
+
+const initialBevestigingsSjablonen: BevestigingsSjabloon[] = [
+  { id: '1', naam: 'Afspraakbevestiging', soort: 'Afspraakbevestiging', onderwerp: 'Bevestiging van uw afspraak', inhoud: 'Beste {client_naam},\n\nHierbij bevestigen wij uw afspraak op {datum} om {tijd}.\n\nMet vriendelijke groet,\n{praktijk_naam}', verzendMoment: 'Direct na inplannen', actief: true },
+  { id: '2', naam: 'Afspraakherinnering', soort: 'Afspraakherinnering', onderwerp: 'Herinnering: uw afspraak', inhoud: 'Beste {client_naam},\n\nDit is een herinnering voor uw afspraak op {datum} om {tijd}.\n\nMet vriendelijke groet,\n{praktijk_naam}', verzendMoment: '24 uur van tevoren', actief: true },
+  { id: '3', naam: 'Afspraakverwijdering', soort: 'Afspraakverwijdering', onderwerp: 'Afspraak geannuleerd', inhoud: 'Beste {client_naam},\n\nUw afspraak op {datum} om {tijd} is geannuleerd.\n\nMet vriendelijke groet,\n{praktijk_naam}', verzendMoment: 'Direct na annulering', actief: true },
+  { id: '4', naam: 'Afspraakwijziging', soort: 'Afspraakwijziging', onderwerp: 'Uw afspraak is gewijzigd', inhoud: 'Beste {client_naam},\n\nUw afspraak is gewijzigd. De nieuwe datum en tijd: {datum} om {tijd}.\n\nMet vriendelijke groet,\n{praktijk_naam}', verzendMoment: 'Direct na wijziging', actief: true },
+  { id: '5', naam: 'Intakebevestiging, zónder videobellen', soort: 'Intakebevestiging', onderwerp: 'Bevestiging intake afspraak', inhoud: 'Beste {client_naam},\n\nHierbij bevestigen wij uw intake afspraak op {datum} om {tijd} op locatie {locatie}.\n\nMet vriendelijke groet,\n{praktijk_naam}', verzendMoment: 'Direct na inplannen', actief: true },
+]
+
 const factureerOpties = [
   'Geweest, wel factureren',
   'No-show, wel factureren',
@@ -214,6 +239,11 @@ export default function BeheerView() {
   const [wachtlijsten, setWachtlijsten] = useState(initialWachtlijsten)
   const [sluitingsredenen, setSluitingsredenen] = useState(initialSluitingsredenen)
   const [relatierollen, setRelatierollen] = useState(initialRelatierollen)
+  const [bevestigingsSjablonen, setBevestigingsSjablonen] = useState(initialBevestigingsSjablonen)
+
+  // Wizard state for bevestigingssjablonen
+  const [wizardStep, setWizardStep] = useState(1)
+  const [wizardMode, setWizardMode] = useState<'list' | 'wizard'>('list')
 
   // Selection state
   const [selectedId, setSelectedId] = useState<string | null>(null)
@@ -249,6 +279,7 @@ export default function BeheerView() {
     else if (activeSection === 'Wachtlijsten') setWachtlijsten((prev) => prev.filter((i) => i.id !== id))
     else if (activeSection === 'Sluitingsredenen') setSluitingsredenen((prev) => prev.filter((i) => i.id !== id))
     else if (activeSection === 'Relatierollen') setRelatierollen((prev) => prev.filter((i) => i.id !== id))
+    else if (activeSection === 'Bevestigingssjablonen') setBevestigingsSjablonen((prev) => prev.filter((i) => i.id !== id))
     setConfirmDelete(null)
     cancelEdit()
   }
@@ -271,7 +302,10 @@ export default function BeheerView() {
     else if (activeSection === 'Wachtlijsten') setWachtlijsten((prev) => upsert(prev, item as Wachtlijst))
     else if (activeSection === 'Sluitingsredenen') setSluitingsredenen((prev) => upsert(prev, item as SluitingsReden))
     else if (activeSection === 'Relatierollen') setRelatierollen((prev) => upsert(prev, item as RelatieRol))
+    else if (activeSection === 'Bevestigingssjablonen') setBevestigingsSjablonen((prev) => upsert(prev, item as BevestigingsSjabloon))
     cancelEdit()
+    setWizardMode('list')
+    setWizardStep(1)
   }
 
   function updateField(key: string, value: unknown) {
@@ -308,6 +342,9 @@ export default function BeheerView() {
 
       case 'Afspraaktypes':
         return renderAfspraakTypesView()
+
+      case 'Bevestigingssjablonen':
+        return renderBevestigingsSjablonenView()
 
       case 'Locaties':
         return renderTableWithPanel(
@@ -684,6 +721,317 @@ export default function BeheerView() {
     )
   }
 
+  function renderBevestigingsSjablonenView() {
+    const wizardSteps = [
+      { nr: 1, label: 'Type bevestiging' },
+      { nr: 2, label: 'Basisgegevens' },
+      { nr: 3, label: 'E-mail' },
+      { nr: 4, label: 'Verzendopties' },
+      { nr: 5, label: 'Voltooid' },
+    ]
+
+    function startWizardCreate() {
+      setWizardMode('wizard')
+      setWizardStep(1)
+      setIsCreating(true)
+      setSelectedId(null)
+      setEditForm({ naam: '', soort: 'Afspraakbevestiging', onderwerp: '', inhoud: '', verzendMoment: 'Direct na inplannen', actief: true })
+    }
+
+    function startWizardEdit(item: BevestigingsSjabloon) {
+      setWizardMode('wizard')
+      setWizardStep(1)
+      setIsCreating(false)
+      setSelectedId(item.id)
+      setEditForm({ ...item })
+    }
+
+    function cancelWizard() {
+      setWizardMode('list')
+      setWizardStep(1)
+      cancelEdit()
+    }
+
+    function finishWizard() {
+      saveItem()
+    }
+
+    // List view
+    if (wizardMode === 'list') {
+      return (
+        <div className="flex flex-1 overflow-hidden">
+          <div className="flex-1 overflow-auto">
+            <div className="flex items-center gap-3 px-4 py-2 border-b border-gray-200 bg-white">
+              <select
+                value={filterStatus}
+                onChange={(e) => setFilterStatus(e.target.value)}
+                className="text-sm border border-gray-300 rounded px-2 py-1"
+              >
+                <option>Actief</option>
+                <option>Alle</option>
+              </select>
+              <button
+                onClick={startWizardCreate}
+                className="flex items-center gap-1 text-sm text-blue-600 hover:text-blue-800"
+              >
+                <Plus className="w-4 h-4" />
+                Nieuwe bevestiging
+              </button>
+            </div>
+
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-gray-200 bg-gray-50">
+                  <th className="text-left px-4 py-2 font-medium text-gray-600">Naam</th>
+                  <th className="text-left px-4 py-2 font-medium text-gray-600">Soort</th>
+                </tr>
+              </thead>
+              <tbody>
+                {bevestigingsSjablonen.map((item) => (
+                  <tr
+                    key={item.id}
+                    className="border-b border-gray-100 cursor-pointer hover:bg-blue-50 transition-colors"
+                    onClick={() => startWizardEdit(item)}
+                  >
+                    <td className="px-4 py-2 text-gray-700">{item.naam}</td>
+                    <td className="px-4 py-2 text-gray-500">{item.soort}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )
+    }
+
+    // Wizard view
+    return (
+      <div className="flex-1 overflow-auto bg-white">
+        <div className="max-w-2xl mx-auto py-6 px-4">
+          {/* Header */}
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-lg font-semibold text-gray-900">
+              {isCreating ? 'Nieuwe bevestiging toevoegen' : 'Bevestiging bewerken'}
+            </h2>
+            <button onClick={cancelWizard} className="text-gray-400 hover:text-gray-600">
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+
+          {/* Step indicator */}
+          <div className="flex items-center mb-8">
+            {wizardSteps.map((step, i) => (
+              <React.Fragment key={step.nr}>
+                <button
+                  onClick={() => setWizardStep(step.nr)}
+                  className={`flex items-center gap-2 shrink-0 ${
+                    wizardStep === step.nr
+                      ? 'text-blue-600'
+                      : wizardStep > step.nr
+                      ? 'text-green-600'
+                      : 'text-gray-400'
+                  }`}
+                >
+                  <span
+                    className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-medium border-2 ${
+                      wizardStep === step.nr
+                        ? 'border-blue-600 bg-blue-50 text-blue-600'
+                        : wizardStep > step.nr
+                        ? 'border-green-500 bg-green-50 text-green-600'
+                        : 'border-gray-300 text-gray-400'
+                    }`}
+                  >
+                    {wizardStep > step.nr ? <Check className="w-3.5 h-3.5" /> : step.nr}
+                  </span>
+                  <span className="text-xs font-medium hidden sm:inline">{step.label}</span>
+                </button>
+                {i < wizardSteps.length - 1 && (
+                  <div className={`flex-1 h-0.5 mx-2 ${wizardStep > step.nr ? 'bg-green-400' : 'bg-gray-200'}`} />
+                )}
+              </React.Fragment>
+            ))}
+          </div>
+
+          {/* Step content */}
+          <div className="bg-gray-50 rounded-lg border border-gray-200 p-6">
+            {wizardStep === 1 && (
+              <div className="space-y-4">
+                <h3 className="font-medium text-gray-900">Soort:</h3>
+                <div className="space-y-2">
+                  {bevestigingSoorten.map((soort) => (
+                    <label
+                      key={soort}
+                      className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+                        (editForm.soort as string) === soort
+                          ? 'border-blue-500 bg-blue-50'
+                          : 'border-gray-200 bg-white hover:border-gray-300'
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="soort"
+                        value={soort}
+                        checked={(editForm.soort as string) === soort}
+                        onChange={(e) => updateField('soort', e.target.value)}
+                        className="text-blue-600"
+                      />
+                      <span className="text-sm text-gray-700">{soort}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {wizardStep === 2 && (
+              <div className="space-y-4">
+                <h3 className="font-medium text-gray-900">Basisgegevens</h3>
+                <FormField label="Naam">
+                  <input
+                    type="text"
+                    value={(editForm.naam as string) || ''}
+                    onChange={(e) => updateField('naam', e.target.value)}
+                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+                    placeholder="Naam van het sjabloon"
+                  />
+                </FormField>
+                <FormField label="Actief">
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={(editForm.actief as boolean) || false}
+                      onChange={(e) => updateField('actief', e.target.checked)}
+                      className="rounded border-gray-300"
+                    />
+                    <span className="text-sm text-gray-600">Sjabloon is actief</span>
+                  </label>
+                </FormField>
+              </div>
+            )}
+
+            {wizardStep === 3 && (
+              <div className="space-y-4">
+                <h3 className="font-medium text-gray-900">E-mail inhoud</h3>
+                <FormField label="Onderwerp">
+                  <input
+                    type="text"
+                    value={(editForm.onderwerp as string) || ''}
+                    onChange={(e) => updateField('onderwerp', e.target.value)}
+                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+                    placeholder="Onderwerp van de e-mail"
+                  />
+                </FormField>
+                <FormField label="Inhoud">
+                  <textarea
+                    value={(editForm.inhoud as string) || ''}
+                    onChange={(e) => updateField('inhoud', e.target.value)}
+                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm font-mono"
+                    rows={8}
+                    placeholder="Gebruik {client_naam}, {datum}, {tijd}, {locatie}, {praktijk_naam} als variabelen"
+                  />
+                </FormField>
+                <p className="text-xs text-gray-500">
+                  Beschikbare variabelen: {'{client_naam}'}, {'{datum}'}, {'{tijd}'}, {'{locatie}'}, {'{praktijk_naam}'}
+                </p>
+              </div>
+            )}
+
+            {wizardStep === 4 && (
+              <div className="space-y-4">
+                <h3 className="font-medium text-gray-900">Verzendopties</h3>
+                <FormField label="Verzendmoment">
+                  <select
+                    value={(editForm.verzendMoment as string) || 'Direct na inplannen'}
+                    onChange={(e) => updateField('verzendMoment', e.target.value)}
+                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+                  >
+                    <option>Direct na inplannen</option>
+                    <option>Direct na wijziging</option>
+                    <option>Direct na annulering</option>
+                    <option>24 uur van tevoren</option>
+                    <option>48 uur van tevoren</option>
+                    <option>1 week van tevoren</option>
+                  </select>
+                </FormField>
+              </div>
+            )}
+
+            {wizardStep === 5 && (
+              <div className="space-y-4">
+                <h3 className="font-medium text-gray-900">Overzicht</h3>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between py-1 border-b border-gray-100">
+                    <span className="text-gray-500">Soort</span>
+                    <span className="text-gray-900">{editForm.soort as string}</span>
+                  </div>
+                  <div className="flex justify-between py-1 border-b border-gray-100">
+                    <span className="text-gray-500">Naam</span>
+                    <span className="text-gray-900">{editForm.naam as string}</span>
+                  </div>
+                  <div className="flex justify-between py-1 border-b border-gray-100">
+                    <span className="text-gray-500">Onderwerp</span>
+                    <span className="text-gray-900">{editForm.onderwerp as string}</span>
+                  </div>
+                  <div className="flex justify-between py-1 border-b border-gray-100">
+                    <span className="text-gray-500">Verzendmoment</span>
+                    <span className="text-gray-900">{editForm.verzendMoment as string}</span>
+                  </div>
+                  <div className="flex justify-between py-1 border-b border-gray-100">
+                    <span className="text-gray-500">Actief</span>
+                    <span className="text-gray-900">{(editForm.actief as boolean) ? 'Ja' : 'Nee'}</span>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Navigation buttons */}
+          <div className="flex justify-between mt-6">
+            <button
+              onClick={() => wizardStep === 1 ? cancelWizard() : setWizardStep(wizardStep - 1)}
+              className="px-4 py-2 text-sm text-gray-600 bg-gray-100 rounded hover:bg-gray-200"
+            >
+              {wizardStep === 1 ? 'Annuleren' : 'Vorige'}
+            </button>
+            {wizardStep < 5 ? (
+              <button
+                onClick={() => setWizardStep(wizardStep + 1)}
+                className="px-4 py-2 text-sm text-white bg-blue-600 rounded hover:bg-blue-700"
+              >
+                Volgende
+              </button>
+            ) : (
+              <button
+                onClick={finishWizard}
+                className="flex items-center gap-1 px-4 py-2 text-sm text-white bg-green-600 rounded hover:bg-green-700"
+              >
+                <Save className="w-3.5 h-3.5" />
+                Opslaan
+              </button>
+            )}
+          </div>
+
+          {/* Delete button for editing */}
+          {!isCreating && (
+            <div className="mt-4 pt-4 border-t border-gray-200">
+              <button
+                onClick={() => {
+                  if (selectedId) {
+                    handleDelete(selectedId)
+                    cancelWizard()
+                  }
+                }}
+                className="flex items-center gap-1 px-3 py-1.5 bg-red-50 text-red-600 rounded text-sm hover:bg-red-100"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                Sjabloon verwijderen
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    )
+  }
+
   function renderAfspraakTypeForm() {
     const tijdField = (label: string, fieldKey: string) => {
       const tc = (editForm[fieldKey] as TijdConfig) || { standaard: 0, min: 0, max: 0 }
@@ -892,6 +1240,8 @@ export default function BeheerView() {
               onClick={() => {
                 setActiveSection(section)
                 cancelEdit()
+                setWizardMode('list')
+                setWizardStep(1)
               }}
               className={`w-full text-left px-4 py-1.5 text-sm transition-colors ${
                 activeSection === section
